@@ -36,13 +36,13 @@ func (c *BuilderClient) Build(path string) string {
 	Expect(c.ServerAddress).NotTo(BeEmpty(), "build server address is empty")
 
 	resp, err := http.Get(fmt.Sprintf("http://%s/%s", c.ServerAddress, path))
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "failed to build [%s]", path)
 
 	body, err := ioutil.ReadAll(resp.Body)
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "failed to read response body")
 
 	if resp.StatusCode != http.StatusOK {
-		Expect(resp.StatusCode).To(Equal(http.StatusOK), fmt.Sprintf("%s", body))
+		Expect(resp.StatusCode).To(Equal(http.StatusOK), fmt.Sprintf("%s", body), "failed to build [%s]: [%d]", path, resp.StatusCode)
 	}
 
 	return string(body)
@@ -66,7 +66,7 @@ func NewBuildServer(args ...string) *BuildServer {
 
 func (s *BuildServer) Serve() {
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "failed to start build server on 127.0.0.1:0")
 
 	s.lis = lis
 	go s.server.Serve(lis)
@@ -81,7 +81,7 @@ func (s *BuildServer) Shutdown() {
 }
 
 func (s *BuildServer) Client() *BuilderClient {
-	Expect(s.lis).NotTo(BeNil())
+	Expect(s.lis).NotTo(BeNil(), "build server is not running")
 
 	return &BuilderClient{
 		ServerAddress: s.lis.Addr().String(),

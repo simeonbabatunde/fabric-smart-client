@@ -136,11 +136,11 @@ func (n *NWO) Start() {
 
 	// store PIDs of all processes
 	f, err := os.Create(filepath.Join(n.ctx.RootDir(), "pids.txt"))
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to create pids.txt file")
 	n.storePIDs(f, members)
 	n.storePIDs(f, fscMembers)
-	Expect(f.Sync()).NotTo(HaveOccurred())
-	Expect(f.Close()).NotTo(HaveOccurred())
+	Expect(f.Sync()).NotTo(HaveOccurred(), "Failed to sync pids.txt file")
+	Expect(f.Close()).NotTo(HaveOccurred(), "Failed to close pids.txt file")
 
 	logger.Infof("Post execution...")
 	for _, platform := range n.Platforms {
@@ -201,7 +201,7 @@ func (n *NWO) storePIDs(f *os.File, members grouper.Members) {
 		case Process:
 			path, pid := r.PID()
 			_, err := f.WriteString(fmt.Sprintf("%s %d\n", path, pid))
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "Failed to write to pids.txt file")
 		case Group:
 			n.storePIDs(f, r.Members())
 		}
