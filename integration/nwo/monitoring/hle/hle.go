@@ -98,10 +98,10 @@ func (n *Extension) GenerateArtifacts() {
 
 		// marshal config
 		configJSON, err := json.MarshalIndent(config, "", "  ")
-		Expect(err).NotTo(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred(), "Failed to marshal config")
 		// write config to file
-		Expect(os.MkdirAll(n.configFileDir(), 0o755)).NotTo(HaveOccurred())
-		Expect(ioutil.WriteFile(n.configFilePath(), configJSON, 0o644)).NotTo(HaveOccurred())
+		Expect(os.MkdirAll(n.configFileDir(), 0o755)).NotTo(HaveOccurred(), "Failed to create config directory")
+		Expect(ioutil.WriteFile(n.configFilePath(), configJSON, 0o644)).NotTo(HaveOccurred(), "Failed to write config file")
 
 		// Generate and store connection profile
 		cp := fabricPlatform.ConnectionProfile(fabricPlatform.Topology().Name(), false)
@@ -123,10 +123,10 @@ func (n *Extension) GenerateArtifacts() {
 			},
 		}
 		cpJSON, err := json.MarshalIndent(cp, "", "  ")
-		Expect(err).NotTo(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred(), "Failed to marshal connection profile")
 		// write cp to file
-		Expect(os.MkdirAll(n.cpFileDir(), 0o755)).NotTo(HaveOccurred())
-		Expect(ioutil.WriteFile(n.cpFilePath(fabricPlatform.Topology().Name()), cpJSON, 0o644)).NotTo(HaveOccurred())
+		Expect(os.MkdirAll(n.cpFileDir(), 0o755)).NotTo(HaveOccurred(), "Failed to create cp directory")
+		Expect(ioutil.WriteFile(n.cpFilePath(fabricPlatform.Topology().Name()), cpJSON, 0o644)).NotTo(HaveOccurred(), "Failed to write cp file")
 	}
 }
 
@@ -150,10 +150,10 @@ func (n *Extension) checkTopology() {
 func (n *Extension) dockerExplorerDB() {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to create docker client")
 
 	net, err := n.platform.DockerClient().NetworkInfo(n.platform.NetworkID())
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to get network info")
 
 	containerName := n.platform.NetworkID() + "-explorerdb.mynetwork.com"
 
@@ -161,7 +161,7 @@ func (n *Extension) dockerExplorerDB() {
 	_, err = cli.VolumeCreate(ctx, volume.VolumeCreateBody{
 		Name: pgdataVolumeName,
 	})
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to create volume"+pgdataVolumeName)
 
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
 		Hostname: "explorerdb.mynetwork.com",
@@ -188,14 +188,14 @@ func (n *Extension) dockerExplorerDB() {
 		},
 	}, nil, containerName,
 	)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to create container "+containerName)
 
 	err = cli.NetworkConnect(context.Background(), n.platform.NetworkID(), resp.ID, &network.EndpointSettings{
 		NetworkID: n.platform.NetworkID(),
 	})
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to connect container to network "+n.platform.NetworkID())
 
-	Expect(cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})).ToNot(HaveOccurred())
+	Expect(cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})).ToNot(HaveOccurred(), "Failed to start docker explorer container")
 
 	dockerLogger := flogging.MustGetLogger("monitoring.hle.db.container")
 	go func() {
@@ -205,7 +205,7 @@ func (n *Extension) dockerExplorerDB() {
 			Follow:     true,
 			Timestamps: false,
 		})
-		Expect(err).ToNot(HaveOccurred())
+		Expect(err).ToNot(HaveOccurred(), "Failed to get docker container logs")
 		defer reader.Close()
 
 		scanner := bufio.NewScanner(reader)
@@ -219,10 +219,10 @@ func (n *Extension) dockerExplorerDB() {
 func (n *Extension) dockerExplorer() {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to create docker client")
 
 	net, err := n.platform.DockerClient().NetworkInfo(n.platform.NetworkID())
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to get network info")
 
 	containerName := n.platform.NetworkID() + "-explorer.mynetwork.com"
 
@@ -230,7 +230,7 @@ func (n *Extension) dockerExplorer() {
 	_, err = cli.VolumeCreate(ctx, volume.VolumeCreateBody{
 		Name: walletStoreVolumeName,
 	})
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to create volume "+walletStoreVolumeName)
 
 	port := strconv.Itoa(n.platform.HyperledgerExplorerPort())
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
@@ -299,14 +299,14 @@ func (n *Extension) dockerExplorer() {
 			},
 		}, nil, containerName,
 	)
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to create container for explorer")
 
 	err = cli.NetworkConnect(context.Background(), n.platform.NetworkID(), resp.ID, &network.EndpointSettings{
 		NetworkID: n.platform.NetworkID(),
 	})
-	Expect(err).ToNot(HaveOccurred())
+	Expect(err).ToNot(HaveOccurred(), "Failed to connect container to network %s", n.platform.NetworkID())
 
-	Expect(cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})).ToNot(HaveOccurred())
+	Expect(cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{})).ToNot(HaveOccurred(), "Failed to start docker explorer container")
 	time.Sleep(3 * time.Second)
 
 	dockerLogger := flogging.MustGetLogger("monitoring.hle.container")
@@ -317,7 +317,7 @@ func (n *Extension) dockerExplorer() {
 			Follow:     true,
 			Timestamps: false,
 		})
-		Expect(err).ToNot(HaveOccurred())
+		Expect(err).ToNot(HaveOccurred(), "Failed to get docker container logs")
 		defer reader.Close()
 
 		scanner := bufio.NewScanner(reader)

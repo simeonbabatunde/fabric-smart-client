@@ -114,7 +114,7 @@ func NewPlatform(context api.Context, t api.Topology, components BuilderClient) 
 	helpers.AssertImagesExist(RequiredImages...)
 
 	dockerClient, err := docker.NewClientFromEnv()
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "failed to create docker client")
 	networkID := common.UniqueName()
 	_, err = dockerClient.CreateNetwork(
 		docker.CreateNetworkOptions{
@@ -122,7 +122,7 @@ func NewPlatform(context api.Context, t api.Topology, components BuilderClient) 
 			Driver: "bridge",
 		},
 	)
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "failed to create docker network")
 
 	network := network.New(
 		context,
@@ -184,7 +184,7 @@ func (p *Platform) PostRun(load bool) {
 				invocation.Args...,
 			)
 			if invocation.ExpectedResult != nil {
-				Expect(res).To(BeEquivalentTo(invocation.ExpectedResult))
+				Expect(res).To(BeEquivalentTo(invocation.ExpectedResult), "Chaincode invocation failed, expected result: %v, actual result: %v", invocation.ExpectedResult, res)
 			}
 		}
 	}
@@ -254,7 +254,7 @@ func (p *Platform) PeersByOrg(fabricHost string, orgName string, includeAll bool
 			})
 		} else {
 			_, port, err := net.SplitHostPort(p.Network.PeerAddress(peer, network.OperationsPort))
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "failed to split host and port [%s] for peer [%s]", p.Network.PeerAddress(peer, network.OperationsPort), peer.Name)
 
 			peers = append(peers, &fabric.Peer{
 				Name:             peer.Name,
@@ -349,7 +349,7 @@ func (p *Platform) Orderers() []*fabric.Orderer {
 		org := p.Network.Organization(orderer.Organization)
 
 		_, port, err := net.SplitHostPort(p.Network.OrdererAddress(orderer, network.OperationsPort))
-		Expect(err).NotTo(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred(), "failed to split host and port [%s] for orderer [%s]", p.Network.OrdererAddress(orderer, network.OperationsPort), orderer.Name)
 
 		orderers = append(orderers, &fabric.Orderer{
 			Name:             orderer.Name,
@@ -407,7 +407,7 @@ func (p *Platform) InvokeChaincode(cc *topology.ChannelChaincode, method string,
 			cc.Chaincode.Name,
 		)
 		output, err := c.SubmitTransaction(method, fpc.ArgsToStrings(args)...)
-		Expect(err).NotTo(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred(), "failed to invoke private chaincode [%s]", cc.Chaincode.Name)
 		return output
 	}
 
@@ -422,7 +422,7 @@ func (p *Platform) InvokeChaincode(cc *topology.ChannelChaincode, method string,
 		s.Args = append(s.Args, string(arg))
 	}
 	ctor, err := json.Marshal(s)
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "failed to marshal chaincode arguments [%s],[%v]", method, args)
 
 	sess, err := p.Network.PeerUserSession(peer, "User1", commands.ChaincodeInvoke{
 		ChannelID: cc.Channel,
@@ -430,7 +430,7 @@ func (p *Platform) InvokeChaincode(cc *topology.ChannelChaincode, method string,
 		Name:      cc.Chaincode.Name,
 		Ctor:      string(ctor),
 	})
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "failed to create user session for chaincode [%s]", cc.Chaincode.Name)
 	Eventually(sess, p.Network.EventuallyTimeout).Should(gexec.Exit(0))
 	Expect(sess.Err).To(gbytes.Say("Chaincode invoke successful. result: status:200"))
 
@@ -473,10 +473,10 @@ func (p *Platform) ConnectionProfile(name string, ca bool) *network.ConnectionPr
 			}
 		} else {
 			signCert, err := ioutil.ReadFile(p.Network.PeerUserCert(p.Network.PeerByName(peers[0].Name), "Admin"))
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "failed to read admin cert for peer [%s]", peers[0].Name)
 
 			adminPrivateKey, err := ioutil.ReadFile(p.Network.PeerUserKey(p.Network.PeerByName(peers[0].Name), "Admin"))
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "failed to read admin key for peer [%s]", peers[0].Name)
 
 			cp.Organizations[org.Name] = network.Organization{
 				MSPID: org.MSPID,
@@ -500,13 +500,13 @@ func (p *Platform) ConnectionProfile(name string, ca bool) *network.ConnectionPr
 		}
 		for _, peer := range peers {
 			_, port, err := net.SplitHostPort(peer.ListeningAddress)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "failed to split listening address [%s]", peer.ListeningAddress)
 
 			bb := bytes.Buffer{}
 
 			for _, cert := range peer.TLSCACerts {
 				raw, err := ioutil.ReadFile(cert)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred(), "failed to read peer tls ca cert [%s]", cert)
 				bb.WriteString(string(raw))
 			}
 
@@ -531,13 +531,13 @@ func (p *Platform) ConnectionProfile(name string, ca bool) *network.ConnectionPr
 	var ordererFullNames []string
 	for _, orderer := range fabricNetwork.Orderers() {
 		_, port, err := net.SplitHostPort(orderer.ListeningAddress)
-		Expect(err).NotTo(HaveOccurred())
+		Expect(err).NotTo(HaveOccurred(), "failed to split listening address [%s]", orderer.ListeningAddress)
 
 		bb := bytes.Buffer{}
 
 		for _, cert := range orderer.TLSCACerts {
 			raw, err := ioutil.ReadFile(cert)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "failed to read orderer tls ca cert [%s]", cert)
 			bb.WriteString(string(raw))
 		}
 

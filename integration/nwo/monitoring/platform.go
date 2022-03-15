@@ -58,7 +58,7 @@ type Platform struct {
 
 func New(reg api.Context, topology *Topology) *Platform {
 	dockerClient, err := docker.NewClientFromEnv()
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to create docker client")
 	networkID := common.UniqueName()
 	_, err = dockerClient.CreateNetwork(
 		docker.CreateNetworkOptions{
@@ -66,7 +66,7 @@ func New(reg api.Context, topology *Topology) *Platform {
 			Driver: "bridge",
 		},
 	)
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to create docker network")
 
 	p := &Platform{
 		Context:      reg,
@@ -130,16 +130,16 @@ func (p *Platform) Cleanup() {
 	if _, ok := err.(*docker.NoSuchNetwork); err != nil && ok {
 		return
 	}
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to get network info")
 
 	containers, err := p.dockerClient.ListContainers(docker.ListContainersOptions{All: true})
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to list containers")
 	for _, c := range containers {
 		for _, name := range c.Names {
 			if strings.HasPrefix(name, "/"+p.networkID) {
 				logger.Infof("cleanup container [%s]", name)
 				err := p.dockerClient.RemoveContainer(docker.RemoveContainerOptions{ID: c.ID, Force: true})
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred(), "Failed to remove container [%s]", name)
 				break
 			} else {
 				logger.Infof("cleanup container [%s], skipped", name)
@@ -148,7 +148,7 @@ func (p *Platform) Cleanup() {
 	}
 
 	volumes, err := p.dockerClient.ListVolumes(docker.ListVolumesOptions{})
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to list volumes")
 	for _, i := range volumes {
 		if strings.HasPrefix(i.Name, p.networkID) {
 			logger.Infof("cleanup volume [%s]", i.Name)
@@ -156,26 +156,26 @@ func (p *Platform) Cleanup() {
 				Name:  i.Name,
 				Force: false,
 			})
-			Expect(err).NotTo(HaveOccurred())
+			Expect(err).NotTo(HaveOccurred(), "Failed to remove volume %s", i.Name)
 			break
 		}
 	}
 
 	images, err := p.dockerClient.ListImages(docker.ListImagesOptions{All: true})
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to list images")
 	for _, i := range images {
 		for _, tag := range i.RepoTags {
 			if strings.HasPrefix(tag, p.networkID) {
 				logger.Infof("cleanup image [%s]", tag)
 				err := p.dockerClient.RemoveImage(i.ID)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred(), "Failed to remove image %s", tag)
 				break
 			}
 		}
 	}
 
 	err = p.dockerClient.RemoveNetwork(nw.ID)
-	Expect(err).NotTo(HaveOccurred())
+	Expect(err).NotTo(HaveOccurred(), "Failed to remove network %s", p.networkID)
 }
 
 func (p *Platform) AddExtension(ex Extension) {
